@@ -191,11 +191,68 @@ export default function LBQuestionnairePage() {
     () => Object.keys(errors).length,
     [errors]
   );
+  const missingFields = useMemo(() => {
+    const labels: string[] = [];
+    const baseLabels: { [key: string]: string } = {
+      participantId: "Participant ID",
+      todayDate: "Today's date",
+      monthYearBirth: "Month and year of birth",
+      ageYears: "Age (in years)",
+      placeOfBirth: "Place of birth",
+      nationality: "Nationality",
+      nationalityOther: "Nationality (specify)",
+      ethnicity: "Ethnicity",
+      ethnicityOther: "Ethnicity (specify)",
+      gender: "Gender",
+      handedness: "Handedness",
+      yearsEducation: "Years of formal education",
+      highestEducation: "Highest education level",
+      fatherQualification: "Father's highest qualification",
+      motherQualification: "Mother's highest qualification",
+      householdIncome: "Gross household income",
+      housingType: "Housing type",
+      housingOther: "Housing type (specify)",
+      yearsInSingapore: "Years living in Singapore",
+      languagePrimary: "Basic Language Information (Language 1)",
+    };
+
+    Object.keys(errors).forEach((key) => {
+      if (baseLabels[key]) {
+        labels.push(baseLabels[key]);
+        return;
+      }
+      if (key.startsWith("languageExposure-")) {
+        const index = Number(key.split("-")[1] ?? 0) + 1;
+        labels.push(`Language ${index} first exposure age`);
+        return;
+      }
+      if (key.startsWith("languageName-")) {
+        const index = Number(key.split("-")[1] ?? 0) + 1;
+        labels.push(`Language ${index} name`);
+        return;
+      }
+      if (key.startsWith("prof-")) {
+        const [, idx, skill] = key.split("-");
+        const index = Number(idx ?? 0) + 1;
+        labels.push(`Language ${index} ${skill}`);
+        return;
+      }
+      labels.push(key);
+    });
+
+    return Array.from(new Set(labels));
+  }, [errors]);
   const usageDistributionTotal = useMemo(() => {
-    return (["home", "school", "work", "other"] as const).reduce(
-      (sum, key) => sum + (Number(usageDistribution[key]) || 0),
-      0
+    const values = (["home", "school", "work", "other"] as const).map(
+      (key) => usageDistribution[key]
     );
+    if (values.some((value) => value.trim() === "")) {
+      return null;
+    }
+    return values
+      .map((value) => Number(value))
+      .filter((value) => !Number.isNaN(value))
+      .reduce((sum, value) => sum + value, 0);
   }, [usageDistribution]);
 
   function digitsOnly(value: string, maxLen = 6) {
@@ -316,6 +373,26 @@ export default function LBQuestionnairePage() {
         ),
       },
     }));
+    setErrors((prev) => {
+      const errorKey = `usage-${section}`;
+      if (!prev[errorKey]) return prev;
+      const next = { ...prev };
+      delete next[errorKey];
+      return next;
+    });
+  }
+
+  function updateUsageDistribution(
+    key: keyof typeof usageDistribution,
+    value: string
+  ) {
+    setUsageDistribution((prev) => ({ ...prev, [key]: clampPercent(value) }));
+    setErrors((prev) => {
+      if (!prev.usageDistribution) return prev;
+      const next = { ...prev };
+      delete next.usageDistribution;
+      return next;
+    });
   }
 
   function updateUsageMix(
@@ -330,6 +407,13 @@ export default function LBQuestionnairePage() {
         mix: { ...prev[section].mix, [key]: value },
       },
     }));
+    setErrors((prev) => {
+      const errorKey = `mix-${section}`;
+      if (!prev[errorKey]) return prev;
+      const next = { ...prev };
+      delete next[errorKey];
+      return next;
+    });
   }
 
   function validate(): FieldErrors {
@@ -390,11 +474,6 @@ export default function LBQuestionnairePage() {
     if (!form.householdIncome.trim()) {
       nextErrors.householdIncome = "Household income is required.";
     }
-    if (!form.householdCount.trim()) {
-      nextErrors.householdCount = "Household size is required.";
-    } else if (Number.isNaN(Number(form.householdCount))) {
-      nextErrors.householdCount = "Household size must be a number.";
-    }
     if (!form.housingType.trim()) {
       nextErrors.housingType = "Housing type is required.";
     }
@@ -450,60 +529,6 @@ export default function LBQuestionnairePage() {
       );
     });
 
-    const distValues = Object.values(usageDistribution)
-      .map((value) => Number(value))
-      .filter((value) => !Number.isNaN(value));
-    if (distValues.length > 0) {
-      const total = distValues.reduce((sum, value) => sum + value, 0);
-      if (
-        Object.values(usageDistribution).some((value) => value.trim() === "")
-      ) {
-        nextErrors.usageDistribution =
-          "Fill all usage distribution percentages.";
-      } else if (total !== 100) {
-        nextErrors.usageDistribution = "Usage distribution must total 100%.";
-      }
-    }
-
-    (["home", "school", "work", "other"] as const).forEach((section) => {
-      const context = usageContexts[section];
-      const anyLanguage = context.entries.some(
-        (entry) => entry.language.trim() || entry.percent.trim()
-      );
-      if (anyLanguage) {
-        const languageTotal = context.entries
-          .map((entry) => Number(entry.percent))
-          .filter((value) => !Number.isNaN(value))
-          .reduce((sum, value) => sum + value, 0);
-        if (
-          context.entries.some(
-            (entry) =>
-              (entry.language.trim() && !entry.percent.trim()) ||
-              (!entry.language.trim() && entry.percent.trim())
-          )
-        ) {
-          nextErrors[`usage-${section}`] =
-            "Provide both language and percentage.";
-        } else if (languageTotal !== 100) {
-          nextErrors[`usage-${section}`] =
-            "Language usage must total 100%.";
-        }
-      }
-
-      const mixValues = Object.values(context.mix)
-        .map((value) => Number(value))
-        .filter((value) => !Number.isNaN(value));
-      if (mixValues.length > 0) {
-        const mixTotal = mixValues.reduce((sum, value) => sum + value, 0);
-        if (Object.values(context.mix).some((value) => value.trim() === "")) {
-          nextErrors[`mix-${section}`] =
-            "Fill all percentages for language mixing.";
-        } else if (mixTotal !== 100) {
-          nextErrors[`mix-${section}`] = "Mixing percentages must total 100%.";
-        }
-      }
-    });
-
     return nextErrors;
   }
 
@@ -526,6 +551,139 @@ export default function LBQuestionnairePage() {
       return;
     }
     window.print();
+  }
+
+  function csvEscape(value: string | number) {
+    const str = value === undefined || value === null ? "" : String(value);
+    if (/[",\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  }
+
+  function handleDownloadCsv() {
+    const nextErrors = validate();
+    setErrors(nextErrors);
+    setSubmitted(true);
+    if (Object.keys(nextErrors).length > 0) {
+      window.scroll({ top: 0, left: 0, behavior: "smooth" });
+      return;
+    }
+
+    const header: string[] = [
+      "participant_id",
+      "entry_date",
+      "birth_month_year",
+      "age_years",
+      "birth_place",
+      "years_in_singapore",
+      "nationality",
+      "nationality_other",
+      "ethnicity",
+      "ethnicity_other",
+      "gender",
+      "handedness",
+      "formal_edu_years",
+      "edu_level_highest",
+      "father_edu_highest",
+      "mother_edu_highest",
+      "household_income",
+      "household_size",
+      "housing_type",
+      "housing_other",
+      "usage_home_pct",
+      "usage_school_pct",
+      "usage_work_pct",
+      "usage_other_pct",
+    ];
+
+    languageEntries.forEach((_, idx) => {
+      const col = idx + 1;
+      header.push(`language_${col}`);
+      header.push(`language_${col}_first_exposure_age`);
+      header.push(`language_${col}_listening`);
+      header.push(`language_${col}_speaking`);
+      header.push(`language_${col}_reading`);
+      header.push(`language_${col}_writing`);
+    });
+
+    const usageSectionKeys = [
+      "home",
+      "school",
+      "work",
+      "other",
+    ] as const;
+
+    usageSectionKeys.forEach((section) => {
+      usageContexts[section].entries.forEach((_, idx) => {
+        const col = idx + 1;
+        header.push(`${section}_lang_${col}`);
+        header.push(`${section}_lang_${col}_pct`);
+      });
+      header.push(`${section}_mix_a_pct`);
+      header.push(`${section}_mix_b_pct`);
+      header.push(`${section}_mix_c_pct`);
+    });
+
+    const row: (string | number)[] = [
+      form.participantId.trim(),
+      form.todayDate.trim(),
+      form.monthYearBirth.trim(),
+      form.ageYears.trim(),
+      form.placeOfBirth.trim(),
+      form.yearsInSingapore.trim(),
+      form.nationality.trim(),
+      form.nationalityOther.trim(),
+      form.ethnicity.trim(),
+      form.ethnicityOther.trim(),
+      form.gender.trim(),
+      form.handedness.trim(),
+      form.yearsEducation.trim(),
+      form.highestEducation.trim(),
+      form.fatherQualification.trim(),
+      form.motherQualification.trim(),
+      form.householdIncome.trim(),
+      form.householdCount.trim(),
+      form.housingType.trim(),
+      form.housingOther.trim(),
+      usageDistribution.home,
+      usageDistribution.school,
+      usageDistribution.work,
+      usageDistribution.other,
+    ];
+
+    languageEntries.forEach((entry, idx) => {
+      const prof = proficiency[idx];
+      row.push(entry.language.trim());
+      row.push(entry.exposureAge.trim());
+      row.push(prof?.listening?.trim() || "");
+      row.push(prof?.speaking?.trim() || "");
+      row.push(prof?.reading?.trim() || "");
+      row.push(prof?.writing?.trim() || "");
+    });
+
+    usageSectionKeys.forEach((section) => {
+      const context = usageContexts[section];
+      context.entries.forEach((entry) => {
+        row.push(entry.language.trim());
+        row.push(entry.percent.trim());
+      });
+      row.push(context.mix.a.trim());
+      row.push(context.mix.b.trim());
+      row.push(context.mix.c.trim());
+    });
+
+    const csvContent =
+      `${header.map(csvEscape).join(",")}\n` +
+      `${row.map(csvEscape).join(",")}`;
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `lb_questionnaire_${form.participantId || "entry"}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -578,7 +736,12 @@ export default function LBQuestionnairePage() {
         <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
           {submitted && missingCount > 0 ? (
             <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              Please fill all required fields. Missing: {missingCount}
+              <p className="font-medium">Please fill the required fields:</p>
+              <ul className="mt-2 list-disc pl-5">
+                {missingFields.map((field) => (
+                  <li key={field}>{field}</li>
+                ))}
+              </ul>
             </div>
           ) : null}
 
@@ -1076,7 +1239,7 @@ export default function LBQuestionnairePage() {
                   onClick={removeLanguageColumn}
                   className="inline-flex items-center gap-2 rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
                 >
-                  <span className="text-lg leading-none">−</span> Remove language
+                  <span className="text-lg leading-none">-</span> Remove language
                 </button>
                 <button
                   type="button"
@@ -1211,10 +1374,7 @@ export default function LBQuestionnairePage() {
                       type="text"
                       value={usageDistribution[key]}
                       onChange={(e) =>
-                        setUsageDistribution((prev) => ({
-                          ...prev,
-                          [key]: clampPercent(e.target.value),
-                        }))
+                        updateUsageDistribution(key, e.target.value)
                       }
                       placeholder="0-100"
                       inputMode="numeric"
@@ -1226,18 +1386,20 @@ export default function LBQuestionnairePage() {
               ))}
             </div>
             <div className="mt-2 text-sm text-gray-600">
-              Total: {usageDistributionTotal}%{" "}
-              {errors.usageDistribution ? (
-                <span className="ml-2 text-xs text-red-600">
-                  {errors.usageDistribution}
-                </span>
-              ) : null}
+              Total:{" "}
+              {usageDistributionTotal === null
+                ? "--/100%"
+                : `${usageDistributionTotal}%/100%`}
             </div>
 
             <div className="mt-6 space-y-6">
               {usageSections.map((section) => {
                 const key = section.key;
                 const context = usageContexts[key];
+                const filledEntries = context.entries.filter(
+                  (entry) => entry.language.trim() || entry.percent.trim()
+                );
+                const expectedTotal = 100;
                 const usageTotal = context.entries
                   .map((entry) => Number(entry.percent))
                   .filter((value) => !Number.isNaN(value))
@@ -1305,12 +1467,10 @@ export default function LBQuestionnairePage() {
                       </table>
                     </div>
                     <div className="text-xs text-gray-600">
-                      Total: {usageTotal}%{" "}
-                      {errors[`usage-${key}`] ? (
-                        <span className="ml-2 text-xs text-red-600">
-                          {errors[`usage-${key}`]}
-                        </span>
-                      ) : null}
+                      Total:{" "}
+                      {filledEntries.length === 0
+                        ? "--/100%"
+                        : `${usageTotal}%/${expectedTotal}%`}
                     </div>
                     <div className="flex justify-end">
                       <div className="flex gap-2">
@@ -1319,7 +1479,7 @@ export default function LBQuestionnairePage() {
                           onClick={() => removeUsageColumn(key)}
                           className="inline-flex items-center gap-2 rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
                         >
-                          <span className="text-lg leading-none">−</span> Remove
+                          <span className="text-lg leading-none">-</span> Remove
                           column
                         </button>
                         <button
@@ -1380,12 +1540,12 @@ export default function LBQuestionnairePage() {
                         ))}
                       </div>
                       <div className="text-xs text-gray-600">
-                        Total: {mixTotal}%{" "}
-                        {errors[`mix-${key}`] ? (
-                          <span className="ml-2 text-xs text-red-600">
-                            {errors[`mix-${key}`]}
-                          </span>
-                        ) : null}
+                        Total:{" "}
+                        {Object.values(context.mix).some(
+                          (value) => value.trim() === ""
+                        )
+                          ? "--/100%"
+                          : `${mixTotal}%/100%`}
                       </div>
                     </div>
                   </div>
@@ -1407,6 +1567,13 @@ export default function LBQuestionnairePage() {
               className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Download PDF
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadCsv}
+              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Download CSV
             </button>
           </div>
         </form>
