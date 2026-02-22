@@ -53,7 +53,7 @@ interface ResultDict {
 }
 
 const saqInstruction =
-  "Instructions: Please rate each item by circling the number that best represents your experience in the task you just performed.";
+  "Please rate each item by circling the number that best represents your experience in the task you just performed.";
 
 const saqItemsFirst = [
   {
@@ -94,6 +94,39 @@ const saqItemsSecond = [
 ];
 
 const saqItems = [...saqItemsFirst, ...saqItemsSecond];
+
+const saqSliderAnchors: { [id: string]: { left: string; right: string } } = {
+  AD: {
+    left: "Very stable,\nSimple and straight forward,\nFew variables changing",
+    right:
+      "Unstable, changes suddenly,\nMany interrelated components,\nMany variables changing",
+  },
+  AS: {
+    left: "Low alertness,\nFocused on one aspect,\nMuch spare capacity",
+    right:
+      "High alertness,\nConcentrating on many aspects,\nNo spare capacity",
+  },
+  UN: {
+    left: "Fully informed and full understanding,\nVery familiar situation",
+    right: "Vert limited informed or understanding,\nVery novel situation",
+  },
+  OCI: {
+    left: "Identified all needed information",
+    right: "Missed important information",
+  },
+  UWO: {
+    left: "Fully understood",
+    right: "Did not make sense to me",
+  },
+  FWD: {
+    left: "Very accurately",
+    right: "Could not predict",
+  },
+  OA: {
+    left: "Low",
+    right: "High",
+  },
+};
 
 function buildEmptyWeightDict(keys: string[]) {
   return keys.reduce((acc, key) => {
@@ -407,7 +440,7 @@ export default function Home() {
           />
         </div>
       ) : null}
-      <div className="pl-8 flex flex-col items-center md:items-start xl:flex-row xl:gap-0">
+      <div className="pl-8 flex flex-col items-center md:items-start xl:flex-row xl:items-start xl:gap-[2cm]">
         <div className="flex flex-col py-6">
           <div className="flex flex-row justify-start gap-8 items-center mb-6">
             <h2 className="text-xl font-bold text-gray-800">Task {tid}</h2>
@@ -421,7 +454,7 @@ export default function Home() {
           </div>
           <ScoreForm sendToParent={getScore} />
         </div>
-        <div className="flex flex-col gap-4 w-[28rem] py-6 xl:-ml-2 xl:pl-2">
+        <div className="flex flex-col gap-4 w-full max-w-[28rem] xl:w-[28rem] py-6">
           <h2 className="text-xl font-bold text-gray-800 pr-4">
             Study Setting
           </h2>
@@ -777,7 +810,7 @@ function ScoreForm({ sendToParent }: ChildProps) {
   }
 
   return (
-    <div className="w-fit">
+    <div className="w-full max-w-4xl">
       <form
         method="post"
         onSubmit={handleSubmit}
@@ -786,7 +819,7 @@ function ScoreForm({ sendToParent }: ChildProps) {
         <div className="w-full flex flex-col gap-6">
           <div className="flex flex-col gap-4">
             <h3 className="text-lg font-semibold text-gray-800">TLX Sliders</h3>
-            <div className="grid grid-flow-row md:grid-flow-col md:grid-rows-3 gap-4">
+            <div className="grid grid-cols-1 gap-2">
               <ScoreSlider
                 title="1. Mental Demand"
                 question=" How mentally demanding was the task?"
@@ -838,8 +871,10 @@ function ScoreForm({ sendToParent }: ChildProps) {
             <h3 className="text-lg font-semibold text-gray-800">
               SITUATION AWARENESS QUESTIONNAIRE
             </h3>
-            <p className="text-sm text-gray-600">{saqInstruction}</p>
-            <div className="grid grid-flow-row md:grid-flow-col md:grid-rows-2 gap-4">
+            <p className="text-sm text-gray-600">
+              <strong>Instructions:</strong> {saqInstruction}
+            </p>
+            <div className="grid grid-cols-1 gap-2">
               {saqItemsFirst.map((item) => (
                 <ScoreSlider
                   key={item.id}
@@ -848,14 +883,17 @@ function ScoreForm({ sendToParent }: ChildProps) {
                   name={item.id}
                   head="Very Low"
                   tail="Very High"
+                  leftDetail={saqSliderAnchors[item.id].left}
+                  rightDetail={saqSliderAnchors[item.id].right}
                   min={0}
                   max={100}
-                  step={5}
                 />
               ))}
             </div>
-            <p className="text-sm text-gray-600">{saqInstruction}</p>
-            <div className="grid grid-flow-row md:grid-flow-col md:grid-rows-2 gap-4">
+            <p className="text-sm text-gray-600">
+              <strong>Instructions:</strong> {saqInstruction}
+            </p>
+            <div className="grid grid-cols-1 gap-2">
               {saqItemsSecond.map((item) => (
                 <ScoreSlider
                   key={item.id}
@@ -863,9 +901,10 @@ function ScoreForm({ sendToParent }: ChildProps) {
                   name={item.id}
                   head="Very Low"
                   tail="Very High"
+                  leftDetail={saqSliderAnchors[item.id].left}
+                  rightDetail={saqSliderAnchors[item.id].right}
                   min={0}
                   max={100}
-                  step={5}
                 />
               ))}
             </div>
@@ -887,6 +926,8 @@ interface ScoreSliderProps {
   name: string;
   head: string;
   tail: string;
+  leftDetail?: string;
+  rightDetail?: string;
   min?: number;
   max?: number;
   step?: number;
@@ -898,9 +939,11 @@ function ScoreSlider({
   name,
   head,
   tail,
+  leftDetail,
+  rightDetail,
   min = 0,
   max = 100,
-  step = 5,
+  step = 10,
 }: ScoreSliderProps) {
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setValue(parseInt(e.currentTarget.value, 10));
@@ -912,20 +955,36 @@ function ScoreSlider({
   const percent =
     max === min ? 0 : ((value - min) / (max - min)) * 100;
   const tickStyle = { "--tick-count": tickCount } as React.CSSProperties;
+  const scaleLabels = Array.from(
+    { length: tickCount },
+    (_, index) => ((min + index * step) / 10).toString()
+  );
+  const hasSideDetail = Boolean(leftDetail || rightDetail);
 
   return (
-    <div className="w-96 flex flex-col items-start gap-4 py-4">
-      <p className="w-full inline-flex justify-center text-gray-900">{title}</p>
+    <div className="w-full max-w-4xl flex flex-col items-start gap-3 py-4">
+      {question ? (
+        <div className="w-full pr-16 flex flex-row items-start justify-between gap-4">
+          <p className="text-left text-gray-900 font-medium">{title}</p>
+          <p className="flex-1 text-right text-sm text-gray-600">
+            {question.trim()}
+          </p>
+        </div>
+      ) : (
+        <p className="w-full text-left text-gray-900 font-medium">{title}</p>
+      )}
       {subheading ? (
         <p className="w-full text-xs text-gray-500">{subheading}</p>
       ) : null}
-      {question ? (
-        <p className="w-full text-sm text-gray-600">{question}</p>
-      ) : null}
 
-      <div className="flex flex-row gap-8">
-        <div className="flex flex-col items-center gap-2">
-          <div className="relative w-72 slider-shell">
+      <div className="w-full flex flex-row items-end gap-4">
+        {hasSideDetail ? (
+          <p className="w-40 text-right text-[11px] leading-4 text-gray-700 whitespace-pre-line">
+            {leftDetail}
+          </p>
+        ) : null}
+        <div className="flex-1 flex flex-col items-start gap-1">
+          <div className="relative w-full slider-shell">
             <div className="slider-track" style={tickStyle}>
               <span className="slider-mid" />
               <span className="slider-marker" style={{ left: `${percent}%` }} />
@@ -941,12 +1000,25 @@ function ScoreSlider({
               className="slider-input"
             />
           </div>
-          <div className="w-72 flex flex-row justify-between">
-            <p className="text-xs text-gray-600">{head}</p>
-            <p className="text-xs text-gray-600">{tail}</p>
+          <div className="w-full flex flex-row justify-between text-[10px] leading-none text-gray-700">
+            {scaleLabels.map((label, index) => (
+              <span key={`${name}-${label}-${index}`} className="select-none">
+                {label}
+              </span>
+            ))}
           </div>
+          {!hasSideDetail ? (
+            <div className="w-full flex flex-row justify-between">
+              <p className="text-xs text-gray-600">{head}</p>
+              <p className="text-xs text-gray-600">{tail}</p>
+            </div>
+          ) : null}
         </div>
-        <p className="w-10">{value}</p>
+        {hasSideDetail ? (
+          <p className="w-40 text-left text-[11px] leading-4 text-gray-700 whitespace-pre-line">
+            {rightDetail}
+          </p>
+        ) : null}
       </div>
     </div>
   );

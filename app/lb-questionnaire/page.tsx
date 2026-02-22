@@ -73,16 +73,13 @@ const parentQualificationOptions = [
   "Diploma/professional",
   "Undergraduate",
   "Post-graduate",
-  "Masters",
-  "Advanced Diploma",
-  "PhD",
 ];
 
 const incomeOptions = [
   "No Employed Person",
   "Less than $3,000",
   "$3,000 - $5,999",
-  "$6,000 - $8,9999",
+  "$6,000 - $8,999",
   "$9,000 - $11,999",
   "$12,000 - $14,999",
   "$15,000 - $17,999",
@@ -996,7 +993,7 @@ export default function LBQuestionnairePage() {
             <p className="text-sm font-medium text-gray-900">
               What is your father's highest qualification?
             </p>
-            <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+            <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
               {parentQualificationOptions.map((option) => (
                 <label key={option} className="flex items-center gap-2">
                   <input
@@ -1020,20 +1017,18 @@ export default function LBQuestionnairePage() {
             <p className="text-sm font-medium text-gray-900">
               What is your mother's highest qualification?
             </p>
-            <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-              {parentQualificationOptions
-                .filter((option) => option !== "Masters" && option !== "PhD")
-                .map((option) => (
-                  <label key={option} className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="motherQualification"
-                      checked={form.motherQualification === option}
-                      onChange={() => updateField("motherQualification", option)}
-                    />
-                    {option}
-                  </label>
-                ))}
+            <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+              {parentQualificationOptions.map((option) => (
+                <label key={option} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="motherQualification"
+                    checked={form.motherQualification === option}
+                    onChange={() => updateField("motherQualification", option)}
+                  />
+                  {option}
+                </label>
+              ))}
             </div>
             {errors.motherQualification ? (
               <span className="mt-1 block text-xs text-red-600">
