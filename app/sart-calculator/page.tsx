@@ -6,6 +6,10 @@ import {
   subscalesToLong,
   subscalesToShort,
   pairwises,
+  saqSubscales,
+  saqSubscalesToLong,
+  saqSubscalesToShort,
+  saqPairwises,
   CSVheader,
   closeSVG,
 } from "@/app/component/constant";
@@ -13,21 +17,99 @@ import {
 interface ResultDict {
   tid: number;
   tname: string;
-  MD: number;
-  PD: number;
-  TD: number;
-  PF: number;
-  EF: number;
-  FR: number;
-  rScore: number;
-  MD_w: number;
-  PD_w: number;
-  TD_w: number;
-  PF_w: number;
-  EF_w: number;
-  FR_w: number;
-  wScore: number;
+  AD: number;
+  AS: number;
+  UN: number;
+  OCI: number;
+  UWO: number;
+  FWD: number;
+  OA: number;
+  saqScore: number;
+  AD_w: number;
+  AS_w: number;
+  UN_w: number;
+  OCI_w: number;
+  UWO_w: number;
+  FWD_w: number;
+  OA_w: number;
+  saqWeightedScore: number;
 }
+
+const saqInstruction =
+  "Please rate each item by circling the number that best represents your experience in the task you just performed.";
+
+const saqItemsFirst = [
+  {
+    id: "AD",
+    title: "1. Attentional Demand",
+    subheading: "The situation was ...",
+  },
+  {
+    id: "AS",
+    title: "2. Attentional Supply",
+    subheading: "Attention, my effort was ...",
+  },
+  {
+    id: "UN",
+    title: "3. Understanding",
+    subheading: "My understanding of the situation was ...",
+  },
+];
+
+const saqItemsSecond = [
+  {
+    id: "OCI",
+    title: "4. My observation of critical information",
+  },
+  {
+    id: "UWO",
+    title: "5. My understanding of what was going on",
+  },
+  {
+    id: "FWD",
+    title: "6. I could look ahead, and foresee what was going to happen",
+  },
+  {
+    id: "OA",
+    title:
+      "7. Overall, what was your awareness of the situation while performing the task?",
+  },
+];
+
+const saqItems = [...saqItemsFirst, ...saqItemsSecond];
+
+const saqSliderAnchors: { [id: string]: { left: string; right: string } } = {
+  AD: {
+    left: "Very stable,\nSimple and straight forward,\nFew variables changing",
+    right:
+      "Unstable, changes suddenly,\nMany interrelated components,\nMany variables changing",
+  },
+  AS: {
+    left: "Low alertness,\nFocused on one aspect,\nMuch spare capacity",
+    right:
+      "High alertness,\nConcentrating on many aspects,\nNo spare capacity",
+  },
+  UN: {
+    left: "Fully informed and full understanding,\nVery familiar situation",
+    right: "Vert limited informed or understanding,\nVery novel situation",
+  },
+  OCI: {
+    left: "Identified all needed information",
+    right: "Missed important information",
+  },
+  UWO: {
+    left: "Fully understood",
+    right: "Did not make sense to me",
+  },
+  FWD: {
+    left: "Very accurately",
+    right: "Could not predict",
+  },
+  OA: {
+    left: "Low",
+    right: "High",
+  },
+};
 
 function buildEmptyWeightDict(keys: string[]) {
   return keys.reduce((acc, key) => {
@@ -36,44 +118,63 @@ function buildEmptyWeightDict(keys: string[]) {
   }, {} as { [id: string]: number });
 }
 
-export default function Home() {
+export default function SartCalculatorPage() {
+  function mapSaqTo100(value: number) {
+    return value;
+  }
+
   function getWeight(weightDict: { [id: string]: number }) {
     setWeight(weightDict);
     setStartWeight(false);
   }
 
-  function getScore(scoreDict: { [id: string]: number }) {
-    let wScore = 0;
-    let rScore = 0;
+  function getSaqWeight(weightDict: { [id: string]: number }) {
+    setSaqWeight(weightDict);
+    setStartSaqWeight(false);
+  }
 
-    subscales.forEach((value) => {
-      wScore += scoreDict[value] * weight[value];
-      rScore += scoreDict[value];
+  function getScore(scoreDict: { [id: string]: number }) {
+    const saqScoreDict: { [id: string]: number } = {};
+    saqItems.forEach((item) => {
+      saqScoreDict[item.id] = mapSaqTo100(scoreDict[item.id]);
     });
 
-    const hasInvalidWeight = Object.values(weight).some((value) => value < 0);
-    wScore = hasInvalidWeight ? -1 : wScore / pairwises.length;
-    rScore = rScore / subscales.length;
+    const saqScore =
+      saqItems.reduce((sum, item) => sum + saqScoreDict[item.id], 0) /
+      saqItems.length;
+
+    let saqWeightedScore = 0;
+    saqSubscales.forEach((value) => {
+      saqWeightedScore += saqScoreDict[value] * saqWeight[value];
+    });
+    const hasInvalidSaqWeight = Object.values(saqWeight).some(
+      (value) => value < 0
+    );
+    saqWeightedScore = hasInvalidSaqWeight
+      ? -1
+      : saqWeightedScore / saqPairwises.length;
 
     setResultDict([
       ...resultDict,
       {
         tid,
         tname,
-        MD: scoreDict["MD"],
-        PD: scoreDict["PD"],
-        TD: scoreDict["TD"],
-        PF: scoreDict["PF"],
-        EF: scoreDict["EF"],
-        FR: scoreDict["FR"],
-        rScore,
-        MD_w: weight["MD"],
-        PD_w: weight["PD"],
-        TD_w: weight["TD"],
-        PF_w: weight["PF"],
-        EF_w: weight["EF"],
-        FR_w: weight["FR"],
-        wScore,
+        AD: saqScoreDict["AD"],
+        AS: saqScoreDict["AS"],
+        UN: saqScoreDict["UN"],
+        OCI: saqScoreDict["OCI"],
+        UWO: saqScoreDict["UWO"],
+        FWD: saqScoreDict["FWD"],
+        OA: saqScoreDict["OA"],
+        saqScore,
+        AD_w: saqWeight["AD"],
+        AS_w: saqWeight["AS"],
+        UN_w: saqWeight["UN"],
+        OCI_w: saqWeight["OCI"],
+        UWO_w: saqWeight["UWO"],
+        FWD_w: saqWeight["FWD"],
+        OA_w: saqWeight["OA"],
+        saqWeightedScore,
       },
     ]);
 
@@ -84,27 +185,28 @@ export default function Home() {
   function handleCSV() {
     const formatScore = (value: number, digits: number) =>
       value < 0 ? "NaN" : value.toFixed(digits);
+    const formatSaq = (value: number) => value.toFixed(2);
 
     const csvData = resultDict.map((value) => [
       pname,
       value.tid,
       value.tname,
-      "TLX Task",
-      value.MD,
-      value.PD,
-      value.TD,
-      value.PF,
-      value.EF,
-      value.FR,
+      "SART Task",
       "",
       "",
       "",
       "",
       "",
       "",
-      "",
-      formatScore(value.rScore, 4),
-      formatScore(value.wScore, 4),
+      formatSaq(value.AD),
+      formatSaq(value.AS),
+      formatSaq(value.UN),
+      formatSaq(value.OCI),
+      formatSaq(value.UWO),
+      formatSaq(value.FWD),
+      formatSaq(value.OA),
+      formatScore(value.saqScore, 4),
+      formatScore(value.saqWeightedScore, 4),
     ]);
 
     const csvRows = [CSVheader, ...csvData];
@@ -119,6 +221,7 @@ export default function Home() {
   }
 
   const [startWeight, setStartWeight] = useState<boolean>(false);
+  const [startSaqWeight, setStartSaqWeight] = useState<boolean>(false);
 
   const [sname, setSname] = useState<string>("");
   const [pname, setPname] = useState<string>("");
@@ -134,12 +237,22 @@ export default function Home() {
     FR: -1,
   });
 
+  const [saqWeight, setSaqWeight] = useState<{ [id: string]: number }>({
+    AD: -1,
+    AS: -1,
+    UN: -1,
+    OCI: -1,
+    UWO: -1,
+    FWD: -1,
+    OA: -1,
+  });
+
   const [resultDict, setResultDict] = useState<ResultDict[]>([]);
 
   return (
     <main className="min-h-screen flex flex-col items-center p-8">
       <div className="w-full flex flex-row justify-between">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">NASA-TLX Calculator</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">SART Calculator</h1>
         <a
           href={"https://github.com/talha-sattar/NASA-TLX-SART-Toolkit.git"}
           target="_blank"
@@ -155,18 +268,19 @@ export default function Home() {
           </svg>
         </a>
       </div>
-
       <div className="w-full flex flex-col gap-2 lg:flex-row justify-start border-b-2 pb-6">
         <p className="flex-1 max-w-96">
           <a
             className="text-blue-500 hover:underline"
-            href="https://humansystems.arc.nasa.gov/groups/tlx/"
+            href="https://www.sciencedirect.com/science/article/pii/S0169814121001517"
             target="_blank"
           >
-            NASA-TLX
+            SART
           </a>{" "}
-          is a subjective assessment tool for measuring perceived workload. This
-          website is built to facilitate the recording of NASA-TLX scores.
+          is a subjective assessment tool used to measure an operator&apos;s
+          perceived level of situation awareness. It evaluates three
+          dimensions: the demands on attentional resources, supply of those
+          resources, and  understanding of the situation.
         </p>
         <ul className="pl-4 list-disc flex-1 lg:w-[32rem]">
           <li>
@@ -193,7 +307,7 @@ export default function Home() {
       {startWeight ? (
         <div className="z-10 absolute top-20 p-4 bg-[var(--background-color)] rounded-xl border-2">
           <div className="flex flex-row justify-between items-start">
-            <h2 className="text-xl font-bold text-gray-800 mb-6">Set Weight</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-6">Set TLX Weight</h2>
             <button
               className="rounded hover:bg-pink-200"
               type="button"
@@ -207,6 +321,27 @@ export default function Home() {
             pairList={pairwises}
             longLabels={subscalesToLong}
             shortLabels={subscalesToShort}
+          />
+        </div>
+      ) : null}
+
+      {startSaqWeight ? (
+        <div className="z-10 absolute top-20 p-4 bg-[var(--background-color)] rounded-xl border-2">
+          <div className="flex flex-row justify-between items-start">
+            <h2 className="text-xl font-bold text-gray-800 mb-6">Set SAQ Weight</h2>
+            <button
+              className="rounded hover:bg-pink-200"
+              type="button"
+              onClick={() => setStartSaqWeight(false)}
+            >
+              {closeSVG}
+            </button>
+          </div>
+          <WeightForm
+            sendToParent={getSaqWeight}
+            pairList={saqPairwises}
+            longLabels={saqSubscalesToLong}
+            shortLabels={saqSubscalesToShort}
           />
         </div>
       ) : null}
@@ -271,6 +406,39 @@ export default function Home() {
                 </div>
               </summary>
               <WeightTable data={weight} columns={subscales} />
+            </details>
+          </div>
+
+          <div className="w-fit my-2">
+            <details className="group [&_summary::-webkit-details-marker]:hidden">
+              <summary className="flex flex-row gap-2 cursor-pointer items-center -ml-6">
+                <span className="-rotate-90 shrink-0 transition duration-300 group-open:rotate-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="size-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </span>
+                <h2 className="text-xl font-bold text-gray-800 pr-4">SAQ Weight</h2>
+                <div className="flex-1 inline-flex justify-end">
+                  <Button
+                    type="button"
+                    placeholder="Reweight"
+                    handler={() => {
+                      setStartSaqWeight(true);
+                      window.scroll({ top: 20, left: 0, behavior: "smooth" });
+                    }}
+                  />
+                </div>
+              </summary>
+              <WeightTable data={saqWeight} columns={saqSubscales} />
             </details>
           </div>
 
@@ -505,16 +673,9 @@ function ScoreForm({ sendToParent }: ChildProps) {
     const formData = new FormData(form);
     const formJson = Object.fromEntries(formData.entries());
 
-    let scoreDict: { [id: string]: number } = {
-      MD: 0,
-      PD: 0,
-      TD: 0,
-      PF: 0,
-      EF: 0,
-      FR: 0,
-    };
-    Object.keys(subscalesToLong).forEach((value) => {
-      scoreDict[value] = parseInt(formJson[value].toString(), 10);
+    let scoreDict: { [id: string]: number } = {};
+    saqItems.forEach((item) => {
+      scoreDict[item.id] = parseInt(formJson[item.id].toString(), 10);
     });
 
     sendToParent(scoreDict);
@@ -525,50 +686,45 @@ function ScoreForm({ sendToParent }: ChildProps) {
       <form method="post" onSubmit={handleSubmit} className="flex flex-col items-start">
         <div className="w-full flex flex-col gap-6">
           <div className="flex flex-col gap-4">
-            <h3 className="text-lg font-semibold text-gray-800">TLX Sliders</h3>
+            <h3 className="text-lg font-semibold text-gray-800">
+              SITUATION AWARENESS QUESTIONNAIRE
+            </h3>
+            <p className="text-sm text-gray-600">
+              <strong>Instructions:</strong> {saqInstruction}
+            </p>
             <div className="grid grid-cols-1 gap-2">
-              <ScoreSlider
-                title="1. Mental Demand"
-                question="How mentally demanding was the task?"
-                name="MD"
-                head="Very Low"
-                tail="Very High"
-              />
-              <ScoreSlider
-                title="2. Physical Demand"
-                question="How physically demanding was the task?"
-                name="PD"
-                head="Very Low"
-                tail="Very High"
-              />
-              <ScoreSlider
-                title="3. Temporal Demand"
-                question="How hurried or rushed was the pace of the task?"
-                name="TD"
-                head="Very Low"
-                tail="Very High"
-              />
-              <ScoreSlider
-                title="4. Performance"
-                question="How successful were you in accomplishing what you were asked to do?"
-                name="PF"
-                head="Perfect"
-                tail="Failure"
-              />
-              <ScoreSlider
-                title="5. Effort"
-                question="How hard did you have to work to accomplish your level of performance?"
-                name="EF"
-                head="Very Low"
-                tail="Very High"
-              />
-              <ScoreSlider
-                title="6. Frustration"
-                question="How insecure, discouraged, irritated, stressed, and annoyed were you?"
-                name="FR"
-                head="Very Low"
-                tail="Very High"
-              />
+              {saqItemsFirst.map((item) => (
+                <ScoreSlider
+                  key={item.id}
+                  title={item.title}
+                  subheading={item.subheading}
+                  name={item.id}
+                  head="Very Low"
+                  tail="Very High"
+                  leftDetail={saqSliderAnchors[item.id].left}
+                  rightDetail={saqSliderAnchors[item.id].right}
+                  min={0}
+                  max={100}
+                />
+              ))}
+            </div>
+            <p className="text-sm text-gray-600">
+              <strong>Instructions:</strong> {saqInstruction}
+            </p>
+            <div className="grid grid-cols-1 gap-2">
+              {saqItemsSecond.map((item) => (
+                <ScoreSlider
+                  key={item.id}
+                  title={item.title}
+                  name={item.id}
+                  head="Very Low"
+                  tail="Very High"
+                  leftDetail={saqSliderAnchors[item.id].left}
+                  rightDetail={saqSliderAnchors[item.id].right}
+                  min={0}
+                  max={100}
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -583,23 +739,27 @@ function ScoreForm({ sendToParent }: ChildProps) {
 
 interface ScoreSliderProps {
   title: string;
-  question?: string;
+  subheading?: string;
   name: string;
   head: string;
   tail: string;
+  leftDetail?: string;
+  rightDetail?: string;
   min?: number;
   max?: number;
   step?: number;
 }
 function ScoreSlider({
   title,
-  question,
+  subheading,
   name,
   head,
   tail,
+  leftDetail,
+  rightDetail,
   min = 0,
   max = 100,
-  step = 5,
+  step = 10,
 }: ScoreSliderProps) {
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setValue(parseInt(e.currentTarget.value, 10));
@@ -612,17 +772,18 @@ function ScoreSlider({
   const tickStyle = { "--tick-count": tickCount } as React.CSSProperties;
   const scaleLabels = Array.from(
     { length: tickCount },
-    (_, index) => (min + index * step).toString()
+    (_, index) => ((min + index * step) / 10).toString()
   );
 
   return (
     <div className="w-full max-w-4xl flex flex-col items-start gap-3 py-4">
-      <div className="w-full flex flex-row items-start justify-between gap-4">
-        <p className="text-left text-gray-900 font-medium">{title}</p>
-        {question ? <p className="flex-1 text-right text-sm text-gray-600">{question}</p> : null}
-      </div>
+      <p className="w-full text-left text-gray-900 font-medium">{title}</p>
+      {subheading ? <p className="w-full text-xs text-gray-500">{subheading}</p> : null}
 
       <div className="w-full flex flex-row items-end gap-4">
+        <p className="w-40 text-right text-[11px] leading-4 text-gray-700 whitespace-pre-line">
+          {leftDetail}
+        </p>
         <div className="flex-1 flex flex-col items-start gap-1">
           <div className="relative w-full slider-shell">
             <div className="slider-track" style={tickStyle}>
@@ -652,6 +813,9 @@ function ScoreSlider({
             <p className="text-xs text-gray-600">{tail}</p>
           </div>
         </div>
+        <p className="w-40 text-left text-[11px] leading-4 text-gray-700 whitespace-pre-line">
+          {rightDetail}
+        </p>
       </div>
     </div>
   );
@@ -664,6 +828,10 @@ function ScoreTable({ data }: ScoreTableProps) {
   function formatScore(value: number, digits: number) {
     if (value < 0) return "NaN";
     return value.toFixed(digits);
+  }
+
+  function formatSaqValue(value: number) {
+    return value.toFixed(2);
   }
 
   function renderCell(label: string, value: string) {
@@ -682,15 +850,16 @@ function ScoreTable({ data }: ScoreTableProps) {
           <table className="min-w-full divide-y-2 divide-gray-200 bg-white text-sm">
             <tbody className="divide-y divide-gray-200">
               <tr>
-                {renderCell("TLX Task", dict.tname || "-")}
-                {renderCell("MD", dict["MD"].toString())}
-                {renderCell("PD", dict["PD"].toString())}
-                {renderCell("TD", dict["TD"].toString())}
-                {renderCell("PF", dict["PF"].toString())}
-                {renderCell("EF", dict["EF"].toString())}
-                {renderCell("FR", dict["FR"].toString())}
-                {renderCell("r-score", formatScore(dict["rScore"], 4))}
-                {renderCell("w-score", formatScore(dict["wScore"], 4))}
+                {renderCell("SART Task", dict.tname || "-")}
+                {renderCell("AD", formatSaqValue(dict["AD"]))}
+                {renderCell("AS", formatSaqValue(dict["AS"]))}
+                {renderCell("UN", formatSaqValue(dict["UN"]))}
+                {renderCell("OCI", formatSaqValue(dict["OCI"]))}
+                {renderCell("UWO", formatSaqValue(dict["UWO"]))}
+                {renderCell("FWD", formatSaqValue(dict["FWD"]))}
+                {renderCell("OA", formatSaqValue(dict["OA"]))}
+                {renderCell("r-score", formatScore(dict["saqScore"], 4))}
+                {renderCell("w-score", formatScore(dict["saqWeightedScore"], 4))}
               </tr>
             </tbody>
           </table>

@@ -21,14 +21,20 @@ export default function RootLayout({
         <nav className="w-full border-b border-gray-200 bg-white">
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-8 py-4">
             <div className="text-lg font-semibold text-gray-900">
-              NASA-TLX Toolkit
+              NASA-TLX & SART Toolkit
             </div>
             <div className="flex items-center gap-3">
               <Link
                 href="/"
                 className="inline-flex items-center rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                Calculator
+                TLX Calculator
+              </Link>
+              <Link
+                href="/sart-calculator"
+                className="inline-flex items-center rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                SART Calculator
               </Link>
               <Link
                 href="/lb-questionnaire"
