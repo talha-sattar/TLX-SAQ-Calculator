@@ -774,6 +774,12 @@ function ScoreSlider({
     { length: tickCount },
     (_, index) => ((min + index * step) / 10).toString()
   );
+  const lastTickIndex = tickCount - 1;
+  const labelPositions = scaleLabels.map((label, index) => ({
+    label,
+    index,
+    left: tickCount <= 1 ? 0 : (index / (tickCount - 1)) * 100,
+  }));
 
   return (
     <div className="w-full max-w-4xl flex flex-col items-start gap-3 py-4">
@@ -787,6 +793,8 @@ function ScoreSlider({
         <div className="flex-1 flex flex-col items-start gap-1">
           <div className="relative w-full slider-shell">
             <div className="slider-track" style={tickStyle}>
+              <span className="slider-edge-start" />
+              <span className="slider-edge-end" />
               <span className="slider-mid" />
               <span className="slider-marker" style={{ left: `${percent}%` }} />
             </div>
@@ -801,9 +809,26 @@ function ScoreSlider({
               className="slider-input"
             />
           </div>
-          <div className="w-full flex flex-row justify-between text-[10px] leading-none text-gray-700">
-            {scaleLabels.map((label, index) => (
-              <span key={`${name}-${label}-${index}`} className="select-none">
+          <div className="relative h-3 w-full text-[10px] leading-none text-gray-700 tabular-nums">
+            {labelPositions.map(({ label, index, left }) => (
+              <span
+                key={`${name}-${label}-${index}`}
+                className="absolute top-0 whitespace-nowrap select-none"
+                style={{
+                  left:
+                    index === 0
+                      ? "1px"
+                      : index === lastTickIndex
+                        ? "calc(100% - 1px)"
+                        : `${left}%`,
+                  transform:
+                    index === 0
+                      ? "translateX(0)"
+                      : index === lastTickIndex
+                        ? "translateX(-100%)"
+                        : "translateX(-50%)",
+                }}
+              >
                 {label}
               </span>
             ))}

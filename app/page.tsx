@@ -610,10 +610,20 @@ function ScoreSlider({
   const tickCount = Math.floor((max - min) / step) + 1;
   const percent = max === min ? 0 : ((value - min) / (max - min)) * 100;
   const tickStyle = { "--tick-count": tickCount } as React.CSSProperties;
-  const scaleLabels = Array.from(
-    { length: tickCount },
-    (_, index) => (min + index * step).toString()
+  const labelStep = 10;
+  const labelCount = Math.floor((max - min) / labelStep) + 1;
+  const labelValues = Array.from(
+    { length: labelCount },
+    (_, index) => min + index * labelStep
   );
+  const labelPositions = labelValues
+    .map((labelValue, index, arr) => ({
+      label: labelValue.toString(),
+      index,
+      isFirst: index === 0,
+      isLast: index === arr.length - 1,
+      left: max === min ? 0 : ((labelValue - min) / (max - min)) * 100,
+    }));
 
   return (
     <div className="w-full max-w-4xl flex flex-col items-start gap-3 py-4">
@@ -626,6 +636,8 @@ function ScoreSlider({
         <div className="flex-1 flex flex-col items-start gap-1">
           <div className="relative w-full slider-shell">
             <div className="slider-track" style={tickStyle}>
+              <span className="slider-edge-start" />
+              <span className="slider-edge-end" />
               <span className="slider-mid" />
               <span className="slider-marker" style={{ left: `${percent}%` }} />
             </div>
@@ -640,9 +652,25 @@ function ScoreSlider({
               className="slider-input"
             />
           </div>
-          <div className="w-full flex flex-row justify-between text-[10px] leading-none text-gray-700">
-            {scaleLabels.map((label, index) => (
-              <span key={`${name}-${label}-${index}`} className="select-none">
+          <div className="relative h-3 w-full text-[10px] leading-none text-gray-700 tabular-nums">
+            {labelPositions.map(({ label, isFirst, isLast, left }) => (
+              <span
+                key={`${name}-${label}`}
+                className="absolute top-0 whitespace-nowrap select-none"
+                style={{
+                  left: isFirst
+                    ? "1px"
+                    : isLast
+                      ? "calc(100% - 1px)"
+                      : `${left}%`,
+                  transform:
+                    isFirst
+                      ? "translateX(0)"
+                      : isLast
+                        ? "translateX(-100%)"
+                        : "translateX(-50%)",
+                }}
+              >
                 {label}
               </span>
             ))}

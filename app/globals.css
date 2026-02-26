@@ -77,6 +77,24 @@ body {
   transform: translate(-50%, -50%);
 }
 
+.slider-edge-start,
+.slider-edge-end {
+  position: absolute;
+  top: 50%;
+  width: 1px;
+  height: 14px;
+  background: #bdbdbd;
+  transform: translateY(-50%);
+}
+
+.slider-edge-start {
+  left: 0;
+}
+
+.slider-edge-end {
+  right: 0;
+}
+
 .slider-marker {
   position: absolute;
   top: 50%;
