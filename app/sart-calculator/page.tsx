@@ -227,6 +227,7 @@ export default function SartCalculatorPage() {
   const [pname, setPname] = useState<string>("");
   const [tname, setTname] = useState<string>("");
   const [tid, setTid] = useState<number>(1);
+  const [scoreResetKey, setScoreResetKey] = useState<number>(0);
 
   const [weight, setWeight] = useState<{ [id: string]: number }>({
     MD: -1,
@@ -358,7 +359,7 @@ export default function SartCalculatorPage() {
               }}
             />
           </div>
-          <ScoreForm sendToParent={getScore} />
+          <ScoreForm key={scoreResetKey} sendToParent={getScore} />
         </div>
 
         <div className="flex flex-col gap-4 w-full max-w-[28rem] xl:w-[28rem] py-6">
@@ -467,6 +468,7 @@ export default function SartCalculatorPage() {
                     handler={() => {
                       setResultDict([]);
                       setTid(1);
+                      setScoreResetKey((value) => value + 1);
                     }}
                   />
                   <Button type="button" placeholder="Download CSV" handler={handleCSV} />
@@ -893,3 +895,4 @@ function ScoreTable({ data }: ScoreTableProps) {
     </div>
   );
 }
+

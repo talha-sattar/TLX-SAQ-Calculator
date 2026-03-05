@@ -243,11 +243,12 @@ export default function LBQuestionnairePage() {
     const values = (["home", "school", "work", "other"] as const).map(
       (key) => usageDistribution[key]
     );
-    if (values.some((value) => value.trim() === "")) {
+    const hasAnyValue = values.some((value) => value.trim() !== "");
+    if (!hasAnyValue) {
       return null;
     }
     return values
-      .map((value) => Number(value))
+      .map((value) => (value.trim() === "" ? 0 : Number(value)))
       .filter((value) => !Number.isNaN(value))
       .reduce((sum, value) => sum + value, 0);
   }, [usageDistribution]);
